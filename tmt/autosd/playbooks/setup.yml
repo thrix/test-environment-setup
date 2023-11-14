@@ -1,0 +1,33 @@
+---
+- hosts: all
+  vars:
+    # default retries for package installation
+    pkg_retry_count: 5
+    pkg_retry_delay: 30
+    # path to the tasks
+    tasks_path: "{{ (playbook_dir ~ '/../tasks') | realpath }}"
+  pre_tasks:
+    - name: check for required variables
+      ansible.builtin.fail:
+        msg: "Required variable {{ item }} was not found"
+      with_items:
+        - IMAGE_NAME
+      when: vars[item] is not defined
+  tasks:
+    # DO NOT ENABLE BY DEFAULT, IT BREAKS PYTHON TEST SUITE (and can others)
+    # - include_tasks: nosync.yml
+    # Disabled 2023-08-10, breaks after reverting back to dnf4, might be needed later once dnf5 lands
+    # - include_tasks: workaround-fedora-rawhide.yml
+    - include_tasks: "{{ tasks_path }}/workaround-fedora-release.yml"
+    - include_tasks: "{{ tasks_path }}/update-and-restart.yml"
+    - include_tasks: "{{ tasks_path }}/workaround-dns.yml"
+    - include_tasks: "{{ tasks_path }}/workaround-beakerlib.yml"
+    - include_tasks: "{{ tasks_path }}/workaround-automotive.yml"
+    - include_tasks: "{{ tasks_path }}/enable-crb.yml"
+    - include_tasks: "{{ tasks_path }}/enable-powertools.yml"
+    - include_tasks: "{{ tasks_path }}/install-epel.yml"
+    - include_tasks: "{{ tasks_path }}/install-koji-brew.yml"
+    # For EOL distros this can fail, ignore the fact tag repo is not around
+    # It is considered a nice to have, but should not fail the setup.
+    - include_tasks: "{{ tasks_path }}/tag-repository.yml"
+      ignore_errors: true
